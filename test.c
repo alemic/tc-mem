@@ -15,7 +15,7 @@ int main()
         return -1;
     }
 
-    p = tc_mem_malloc(&pool, 7);
+    p = tc_mem_alloc(&pool, 7);
 
     memset(p, 0, 7);
     memcpy(p, "123456", 6);
@@ -24,7 +24,7 @@ int main()
     tc_mem_free(&pool, p, 7);
 
 
-    p = tc_mem_malloc(&pool, 17);
+    p = tc_mem_alloc(&pool, 17);
 
     memset(p, 0, 17);
     memcpy(p, "1234567", 7);

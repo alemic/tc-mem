@@ -78,7 +78,7 @@ tc_mem_destroy(tc_mpool_t *pool)
 }
 
 void *
-tc_mem_malloc(tc_mpool_t *pool, size_t size)
+tc_mem_alloc(tc_mpool_t *pool, size_t size)
 {
     char       *p;
     tc_slab_t  *s;
@@ -153,7 +153,6 @@ tc_mem_info(tc_mpool_t *pool)
     }
 }
 
-/* TODO need to callocate size */
 static int
 tc_mem_slabs_init(tc_mpool_t *pool)
 {
