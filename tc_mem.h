@@ -7,6 +7,7 @@
 
 #define TC_MEM_ERROR -1
 #define TC_MEM_OK     0
+#define TC_SLAB_END   { 0, 0, 0 }
 
 typedef struct tc_block_s tc_block_t;
 
@@ -15,8 +16,9 @@ typedef struct tc_block_s tc_block_t;
 
 
 typedef struct {
-    int max;
-    int num;
+    int    max;
+    int    num;
+    float  scope;
 } tc_slab_conf_t;
 
 typedef struct {

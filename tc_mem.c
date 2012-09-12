@@ -5,30 +5,43 @@ static int tc_mem_slabs_init(tc_mpool_t *pool);
 static void tc_mem_chunks_init(char *p, int n, int size);
 static tc_slab_t *tc_mem_slab_find(tc_mpool_t *pool, size_t size);
 static void *tc_mem_block_alloc(size_t size);
+static int tc_mem_deduce_slab(int ori, float scope);
 
 static tc_slab_conf_t slabs[] = {
-    { 8, 10 },
-    { 16, 10 },
-    { 32, 10 },
-    { 64, 10 },
-    { 128, 10 },
-    { 256, 10 },
-    { 512, 10 },
-    { 1024, 10 },
-    { 2048, 10 },
-    { 3072, 10 },
-    { 4096, 10 },
-    { 0, 0 }
+    { 8,    10, 1.2 },
+    { 16,   10, 1.2 },
+    { 32,   10, 1.2 },
+    { 64,   10, 1.2 },
+    { 128,  10, 1.1 },
+    { 256,  10, 1.1 },
+    { 512,  10, 1.1 },
+    { 1024, 10, 1.05 },
+    { 2048, 10, 1.05 },
+    { 3072, 10, 1.05 },
+    { 4096, 10, 1.05 },
+    TC_SLAB_END
 };
 
 int
 tc_mem_init(tc_mpool_t *pool)
 {
-    int        i, n;
-    tc_slab_t *p;
+    int             i, j, n, d_slab, begin;
+    tc_slab_t      *p;
+    tc_slab_conf_t *sc;
 
     for (i = 0, n = 0; slabs[i].max; i++) {
+        sc = slabs + i;
+
         n++;
+
+        for (begin = sc->max; ; begin = d_slab) {
+            d_slab = tc_mem_deduce_slab(begin, sc->scope);
+            if (d_slab >= (sc + 1)->max) {
+                break;
+            } else {
+                n++;
+            }
+        }
     }
 
     p = malloc(n * sizeof(tc_slab_t));
@@ -36,17 +49,32 @@ tc_mem_init(tc_mpool_t *pool)
         return TC_MEM_ERROR;
     }
 
-    for (i = 0; i < n; i++) {
-        p[i].size = slabs[i].max;
-        p[i].n = slabs[i].num;
-        p[i].free = NULL;
-        p[i].head = NULL;
-    }
-
     pool->head = p;
     pool->min = 8;
     pool->max = 4096;
     pool->slabs = n;
+
+    for (i = 0, j = 0; i < n; i++, j++) {
+        sc = slabs + j;
+
+        p[i].size = sc->max;
+        p[i].n = sc->num;
+        p[i].free = NULL;
+        p[i].head = NULL;
+
+        for (begin = sc->max; ; begin = d_slab) {
+            d_slab = tc_mem_deduce_slab(begin, sc->scope);
+            if (d_slab >= (sc + 1)->max) {
+                break;
+            } else {
+                i++;
+                p[i].size = d_slab;
+                p[i].n = sc->num;
+                p[i].free = NULL;
+                p[i].head = NULL;
+            }
+        }
+    }
 
     if (tc_mem_slabs_init(pool) == TC_MEM_ERROR) {
         return TC_MEM_ERROR;
@@ -148,8 +176,8 @@ tc_mem_info(tc_mpool_t *pool)
     for (i = 0; i < n; i++) {
         s = pool->head + i;
 
-        printf("slab <= %4d - blocks: %d, chunks: %d, size: %d\n",
-                s->size, s->block, s->n, s->size);
+        printf("slab(%3d) <= %4d - blocks: %d, chunks: %d, size: %d\n",
+                i, s->size, s->block, s->n, s->size);
     }
 }
 
@@ -217,7 +245,7 @@ tc_mem_slab_find(tc_mpool_t *pool, size_t size)
     last = pool->slabs - 1;
 
     for ( ;; ) {
-        m2 = (last - first + 1) / 2;
+        m2 = (last - first + 1) / 2 + first;
         m1 = m2 - 1;
 
         p1 = h + m1;
@@ -259,4 +287,10 @@ tc_mem_block_alloc(size_t size)
     b->next = NULL;
 
     return p;
+}
+
+static int
+tc_mem_deduce_slab(int ori, float scope)
+{
+    return (int) (ori * scope) + 1;
 }
